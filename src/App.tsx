@@ -436,17 +436,6 @@ const VisualizationCard = ({ layers, lid }: { layers: any[], lid: any }) => {
     bg.setAttribute('fill', '#ffffff');
     clonedSvg.insertBefore(bg, clonedSvg.firstChild);
 
-    // Add watermark
-    const watermark = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    watermark.setAttribute('x', (vbX + 20).toString());
-    watermark.setAttribute('y', (vbY + vbHeight - 20).toString());
-    watermark.setAttribute('fill', '#94a3b8');
-    watermark.setAttribute('font-size', '14');
-    watermark.setAttribute('font-family', 'sans-serif');
-    watermark.setAttribute('font-weight', '600');
-    watermark.textContent = `© ${new Date().getFullYear()} Công cụ tính toán cắt inox`;
-    clonedSvg.appendChild(watermark);
-
     const svgData = new XMLSerializer().serializeToString(clonedSvg);
     const canvas = document.createElement('canvas');
     canvas.width = exportWidth;
