@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { Calculator, Info, Layers, Maximize, CircleDashed, CheckCircle2, Ruler, PieChart } from 'lucide-react';
+import React, { useState, useMemo, useRef } from 'react';
+import { Calculator, Info, Layers, Maximize, CircleDashed, CheckCircle2, Ruler, PieChart, Download } from 'lucide-react';
 
 export default function App() {
   // State
@@ -250,10 +250,7 @@ export default function App() {
             {results ? (
               <>
                 {/* Visualization */}
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col items-center justify-center min-h-[300px]">
-                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6">Mô phỏng trực quan</h3>
-                  <NestedCylindersSVG layers={[results.layer3, results.layer2, results.layer1].filter(Boolean)} lid={results.lid} />
-                </div>
+                <VisualizationCard layers={[results.layer3, results.layer2, results.layer1].filter(Boolean)} lid={results.lid} />
 
                 {/* Results Cards */}
                 <div className="space-y-4">
@@ -403,7 +400,107 @@ const LidResultCard = ({ data }: { data: any }) => {
   );
 }
 
-const NestedCylindersSVG = ({ layers, lid }: { layers: any[], lid: any }) => {
+const VisualizationCard = ({ layers, lid }: { layers: any[], lid: any }) => {
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  const handleDownload = () => {
+    if (!svgRef.current) return;
+
+    const svgElement = svgRef.current;
+    
+    // Create a clone of the SVG to modify for download
+    const clonedSvg = svgElement.cloneNode(true) as SVGSVGElement;
+    
+    // Set FHD resolution
+    const width = 1920;
+    const height = 1080;
+    clonedSvg.setAttribute('width', width.toString());
+    clonedSvg.setAttribute('height', height.toString());
+    
+    // Adjust viewBox to center the content in FHD
+    // Original viewBox is 0 0 600 600
+    const scale = Math.min(width / 600, height / 600) * 0.8; // 80% of screen
+    const scaledWidth = 600 * scale;
+    const scaledHeight = 600 * scale;
+    const offsetX = (width - scaledWidth) / 2;
+    const offsetY = (height - scaledHeight) / 2;
+    
+    // Wrap the original content in a group that scales and translates
+    const originalContent = Array.from(clonedSvg.childNodes);
+    clonedSvg.innerHTML = '';
+    
+    // Add a white background
+    const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    bg.setAttribute('width', '100%');
+    bg.setAttribute('height', '100%');
+    bg.setAttribute('fill', '#ffffff');
+    clonedSvg.appendChild(bg);
+
+    const wrapper = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    wrapper.setAttribute('transform', `translate(${offsetX}, ${offsetY}) scale(${scale})`);
+    originalContent.forEach(node => wrapper.appendChild(node));
+    clonedSvg.appendChild(wrapper);
+
+    // Add watermark
+    const watermark = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    watermark.setAttribute('x', '40');
+    watermark.setAttribute('y', (height - 40).toString());
+    watermark.setAttribute('fill', '#94a3b8');
+    watermark.setAttribute('font-size', '32');
+    watermark.setAttribute('font-family', 'sans-serif');
+    watermark.setAttribute('font-weight', '600');
+    watermark.textContent = `© ${new Date().getFullYear()} Công cụ tính toán cắt inox`;
+    clonedSvg.appendChild(watermark);
+
+    const svgData = new XMLSerializer().serializeToString(clonedSvg);
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    
+    const img = new Image();
+    img.onload = () => {
+      if (ctx) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0);
+        
+        const a = document.createElement('a');
+        a.download = `mo-phong-noi-inox-${Date.now()}.png`;
+        a.href = canvas.toDataURL('image/png');
+        a.click();
+      }
+    };
+    
+    img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+  };
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 relative overflow-hidden group">
+      <div className="absolute top-4 right-4 z-10">
+        <button 
+          onClick={handleDownload}
+          className="flex items-center gap-2 bg-white/90 backdrop-blur-sm border border-slate-200 text-slate-700 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50 px-4 py-2 rounded-xl shadow-sm transition-all font-medium text-sm cursor-pointer"
+          title="Tải về hình ảnh FHD (1920x1080)"
+        >
+          <Download className="w-4 h-4" />
+          <span className="hidden sm:inline">Tải về FHD</span>
+        </button>
+      </div>
+      
+      <div className="absolute top-4 left-4 z-10 flex items-center gap-2 text-slate-500 bg-white/80 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-slate-100">
+        <Maximize className="w-4 h-4" />
+        <span className="text-sm font-medium">Mô phỏng 3D</span>
+      </div>
+      
+      <div className="mt-8">
+        <NestedCylindersSVG layers={layers} lid={lid} svgRef={svgRef} />
+      </div>
+    </div>
+  );
+};
+
+const NestedCylindersSVG = ({ layers, lid, svgRef }: { layers: any[], lid: any, svgRef?: React.RefObject<SVGSVGElement | null> }) => {
   if (!layers.length) return null;
   
   const maxD = layers[0].diameter;
@@ -411,7 +508,7 @@ const NestedCylindersSVG = ({ layers, lid }: { layers: any[], lid: any }) => {
   const lidH = lid?.height || 0;
   
   const maxDim = Math.max(maxD, maxH + lidH);
-  const scale = 200 / (maxDim * 1.2);
+  const scale = 450 / (maxDim * 1.2);
 
   const colors = [
     { fill: 'rgba(226, 232, 240, 0.4)', stroke: '#94a3b8' }, // outer
@@ -425,11 +522,11 @@ const NestedCylindersSVG = ({ layers, lid }: { layers: any[], lid: any }) => {
   const minY = -lidH * scale - (maxD * scale / 2) * 0.25;
   const maxY = maxH * scale + (maxD * scale / 2) * 0.25;
   const centerY = (minY + maxY) / 2;
-  const yOffset = 125 - centerY;
+  const yOffset = 300 - centerY;
 
   return (
-    <svg width="100%" height="250" viewBox="0 0 300 250" className="mx-auto overflow-visible">
-      <g transform={`translate(150, ${yOffset})`}>
+    <svg ref={svgRef} xmlns="http://www.w3.org/2000/svg" width="100%" height="500" viewBox="0 0 600 600" className="mx-auto overflow-visible" fontFamily="sans-serif">
+      <g transform={`translate(300, ${yOffset})`}>
         {/* Draw all bodies and bottom ellipses first */}
         {layers.map((layer, i) => {
           const scaledD = layer.diameter * scale;
