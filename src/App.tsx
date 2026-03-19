@@ -417,7 +417,8 @@ const VisualizationCard = ({ layers, lid }: { layers: any[], lid: any }) => {
     const vbX = bbox.x - margin;
     const vbY = bbox.y - margin;
     const vbWidth = bbox.width + margin * 2;
-    const vbHeight = bbox.height + margin * 2;
+    const textSpace = 30; // Extra space for the text at the bottom
+    const vbHeight = bbox.height + margin * 2 + textSpace;
     
     clonedSvg.setAttribute('viewBox', `${vbX} ${vbY} ${vbWidth} ${vbHeight}`);
     
@@ -435,6 +436,18 @@ const VisualizationCard = ({ layers, lid }: { layers: any[], lid: any }) => {
     bg.setAttribute('height', vbHeight.toString());
     bg.setAttribute('fill', '#ffffff');
     clonedSvg.insertBefore(bg, clonedSvg.firstChild);
+
+    // Add brand text at the bottom
+    const brandText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    brandText.setAttribute('x', (vbX + vbWidth / 2).toString());
+    brandText.setAttribute('y', (vbY + vbHeight - 20).toString());
+    brandText.setAttribute('fill', '#1e293b');
+    brandText.setAttribute('font-size', '16');
+    brandText.setAttribute('font-family', 'sans-serif');
+    brandText.setAttribute('font-weight', 'bold');
+    brandText.setAttribute('text-anchor', 'middle');
+    brandText.textContent = 'Inox Năng Lực 0934 77 82 83';
+    clonedSvg.appendChild(brandText);
 
     const svgData = new XMLSerializer().serializeToString(clonedSvg);
     const canvas = document.createElement('canvas');
