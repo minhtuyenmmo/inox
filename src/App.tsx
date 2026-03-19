@@ -407,46 +407,41 @@ const VisualizationCard = ({ layers, lid }: { layers: any[], lid: any }) => {
     if (!svgRef.current) return;
 
     const svgElement = svgRef.current;
-    
-    // Create a clone of the SVG to modify for download
     const clonedSvg = svgElement.cloneNode(true) as SVGSVGElement;
     
-    // Set FHD resolution
-    const width = 1920;
-    const height = 1080;
-    clonedSvg.setAttribute('width', width.toString());
-    clonedSvg.setAttribute('height', height.toString());
+    // Get the exact bounding box of the drawn pot
+    const bbox = svgElement.getBBox();
+    const margin = 40;
     
-    // Adjust viewBox to center the content in FHD
-    // Original viewBox is 0 0 600 600
-    const scale = Math.min(width / 600, height / 600) * 0.8; // 80% of screen
-    const scaledWidth = 600 * scale;
-    const scaledHeight = 600 * scale;
-    const offsetX = (width - scaledWidth) / 2;
-    const offsetY = (height - scaledHeight) / 2;
+    // Calculate new viewBox that tightly fits the pot with a margin
+    const vbX = bbox.x - margin;
+    const vbY = bbox.y - margin;
+    const vbWidth = bbox.width + margin * 2;
+    const vbHeight = bbox.height + margin * 2;
     
-    // Wrap the original content in a group that scales and translates
-    const originalContent = Array.from(clonedSvg.childNodes);
-    clonedSvg.innerHTML = '';
+    clonedSvg.setAttribute('viewBox', `${vbX} ${vbY} ${vbWidth} ${vbHeight}`);
+    
+    // Export at 2x resolution for sharpness
+    const exportWidth = Math.round(vbWidth * 2);
+    const exportHeight = Math.round(vbHeight * 2);
+    clonedSvg.setAttribute('width', exportWidth.toString());
+    clonedSvg.setAttribute('height', exportHeight.toString());
     
     // Add a white background
     const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    bg.setAttribute('width', '100%');
-    bg.setAttribute('height', '100%');
+    bg.setAttribute('x', vbX.toString());
+    bg.setAttribute('y', vbY.toString());
+    bg.setAttribute('width', vbWidth.toString());
+    bg.setAttribute('height', vbHeight.toString());
     bg.setAttribute('fill', '#ffffff');
-    clonedSvg.appendChild(bg);
-
-    const wrapper = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    wrapper.setAttribute('transform', `translate(${offsetX}, ${offsetY}) scale(${scale})`);
-    originalContent.forEach(node => wrapper.appendChild(node));
-    clonedSvg.appendChild(wrapper);
+    clonedSvg.insertBefore(bg, clonedSvg.firstChild);
 
     // Add watermark
     const watermark = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    watermark.setAttribute('x', '40');
-    watermark.setAttribute('y', (height - 40).toString());
+    watermark.setAttribute('x', (vbX + 20).toString());
+    watermark.setAttribute('y', (vbY + vbHeight - 20).toString());
     watermark.setAttribute('fill', '#94a3b8');
-    watermark.setAttribute('font-size', '32');
+    watermark.setAttribute('font-size', '14');
     watermark.setAttribute('font-family', 'sans-serif');
     watermark.setAttribute('font-weight', '600');
     watermark.textContent = `© ${new Date().getFullYear()} Công cụ tính toán cắt inox`;
@@ -454,15 +449,15 @@ const VisualizationCard = ({ layers, lid }: { layers: any[], lid: any }) => {
 
     const svgData = new XMLSerializer().serializeToString(clonedSvg);
     const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
+    canvas.width = exportWidth;
+    canvas.height = exportHeight;
     const ctx = canvas.getContext('2d');
     
     const img = new Image();
     img.onload = () => {
       if (ctx) {
         ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, width, height);
+        ctx.fillRect(0, 0, exportWidth, exportHeight);
         ctx.drawImage(img, 0, 0);
         
         const a = document.createElement('a');
@@ -481,10 +476,10 @@ const VisualizationCard = ({ layers, lid }: { layers: any[], lid: any }) => {
         <button 
           onClick={handleDownload}
           className="flex items-center gap-2 bg-white/90 backdrop-blur-sm border border-slate-200 text-slate-700 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50 px-4 py-2 rounded-xl shadow-sm transition-all font-medium text-sm cursor-pointer"
-          title="Tải về hình ảnh FHD (1920x1080)"
+          title="Tải về hình ảnh"
         >
           <Download className="w-4 h-4" />
-          <span className="hidden sm:inline">Tải về FHD</span>
+          <span className="hidden sm:inline">Tải hình ảnh</span>
         </button>
       </div>
       
